@@ -66,15 +66,17 @@ public static class HmacExtensions
         // Walidacja zachłanna — niepoprawna konfiguracja blokuje start aplikacji.
         var probe = new HmacSigningOptions();
         configureOptions(probe);
-        HmacOptionsValidation.ThrowIfInvalid<HmacSigningOptions>(nameof(HmacSigningOptions), HmacOptionsValidation.GetFailures(probe));
+        HmacOptionsValidation.ThrowIfInvalid<HmacSigningOptions>(builder.Name, HmacOptionsValidation.GetFailures(probe));
 
+        // Opcje nazwane nazwą klienta — kilka podpisywanych HttpClient w jednej aplikacji
+        // może mieć niezależne poświadczenia (kid/sekret).
         builder.Services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<HmacSigningOptions>, HmacSigningOptionsValidator>());
-        builder.Services.AddOptions<HmacSigningOptions>().Configure(configureOptions);
+        builder.Services.AddOptions<HmacSigningOptions>(builder.Name).Configure(configureOptions);
         builder.Services.AddMemoryCache();
         builder.Services.TryAddSingleton(TimeProvider.System);
 
         return builder.AddHttpMessageHandler(sp =>
-            new HmacSigningHandler(sp.GetRequiredService<IOptions<HmacSigningOptions>>().Value, sp.GetRequiredService<TimeProvider>()));
+            new HmacSigningHandler(sp.GetRequiredService<IOptionsMonitor<HmacSigningOptions>>().Get(builder.Name), sp.GetRequiredService<TimeProvider>()));
     }
 
     /// <summary>

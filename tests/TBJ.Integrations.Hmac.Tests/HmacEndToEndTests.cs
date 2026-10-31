@@ -171,6 +171,53 @@ public class HmacEndToEndTests
     }
 
     [Fact]
+    public async Task Dwa_klienci_z_roznymi_poswiadczeniami_podpisuja_wlasnymi_danymi()
+    {
+        // Opcje nazwane nazwą klienta — każdy HttpClient ma własne kid/sekret.
+        var captured = new Dictionary<string, string>();
+        var services = new ServiceCollection();
+        services.AddHttpClient("klient-a")
+            .ConfigurePrimaryHttpMessageHandler(_ => new RecordingHandler("a", captured))
+            .AddHmacSigning(o => { o.Kid = "kid-a"; o.Secret = "sekret-a-0123456789abcdef0123456789"; });
+        services.AddHttpClient("klient-b")
+            .ConfigurePrimaryHttpMessageHandler(_ => new RecordingHandler("b", captured))
+            .AddHmacSigning(o => { o.Kid = "kid-b"; o.Secret = "sekret-b-0123456789abcdef0123456789"; });
+        var provider = services.BuildServiceProvider();
+        var factory = provider.GetRequiredService<IHttpClientFactory>();
+
+        var clientA = factory.CreateClient("klient-a");
+        clientA.BaseAddress = new Uri("http://localhost/");
+        var clientB = factory.CreateClient("klient-b");
+        clientB.BaseAddress = new Uri("http://localhost/");
+
+        await clientA.SendAsync(SignedRequest(HttpMethod.Get, "/secure"));
+        await clientB.SendAsync(SignedRequest(HttpMethod.Get, "/secure"));
+
+        Assert.True(HmacSignature.TryParse(captured["a"], out var tokenA));
+        Assert.True(HmacSignature.TryParse(captured["b"], out var tokenB));
+        Assert.Equal("kid-a", tokenA.Kid);
+        Assert.Equal("kid-b", tokenB.Kid);
+
+        // Podpis klienta A zgadza się z jego sekretem, a nie z sekretem klienta B.
+        var canonical = HmacSignature.BuildCanonical(
+            tokenA.Timestamp, "GET", "/secure", tokenA.BodyHash, Tenant);
+        Assert.True(HmacSignature.FixedTimeEqualsBase64Url(
+            HmacSignature.ComputeSignature("sekret-a-0123456789abcdef0123456789", canonical), tokenA.Signature));
+        Assert.False(HmacSignature.FixedTimeEqualsBase64Url(
+            HmacSignature.ComputeSignature("sekret-b-0123456789abcdef0123456789", canonical), tokenA.Signature));
+    }
+
+    /// <summary>Handler rejestrujący nagłówek Authorization pod kluczem i zwracający 200.</summary>
+    private sealed class RecordingHandler(string key, IDictionary<string, string> captured) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            captured[key] = request.Headers.Authorization?.ToString() ?? string.Empty;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+        }
+    }
+
+    [Fact]
     public async Task Handler_dodaje_naglowek_korelacji_gdy_go_brak()
     {
         using var server = CreateServer();
