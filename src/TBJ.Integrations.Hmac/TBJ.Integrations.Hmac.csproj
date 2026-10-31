@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <RootNamespace>TBJ.Integrations.Hmac</RootNamespace>
+    <AssemblyName>TBJ.Integrations.Hmac</AssemblyName>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackageId>TBJ.Integrations.Hmac</PackageId>
+    <Description>Podpis i weryfikacja żądań HTTP między serwisami (HMAC-SHA256, schemat TBJ-INT-HMAC) — klient DelegatingHandler i schemat uwierzytelniania ASP.NET Core.</Description>
+    <PackageTags>hmac;authentication;http;signing;tbj</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <MinVerTagPrefix>hmac/v</MinVerTagPrefix>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="MinVer" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="TBJ.Integrations.Hmac.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

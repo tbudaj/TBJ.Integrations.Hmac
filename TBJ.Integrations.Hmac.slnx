@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TBJ.Integrations.Hmac/TBJ.Integrations.Hmac.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TBJ.Integrations.Hmac.Tests/TBJ.Integrations.Hmac.Tests.csproj" />
+  </Folder>
+</Solution>
