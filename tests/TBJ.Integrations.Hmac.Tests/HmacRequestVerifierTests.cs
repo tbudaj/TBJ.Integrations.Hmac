@@ -182,6 +182,20 @@ public class HmacRequestVerifierTests
     }
 
     [Fact]
+    public void Wpis_replay_z_Size_przechodzi_przy_globalnym_SizeLimit_cache()
+    {
+        // Host może ustawić SizeLimit na wspólnym IMemoryCache (np. przez AddNfzUmwApi) —
+        // wpis anty-replay musi mieć Size, inaczej Set rzuca InvalidOperationException.
+        var cache = new MemoryCache(new MemoryCacheOptions { SizeLimit = 10 });
+        var verifier = Verifier(FixedTime(), cache, Client());
+        var header = Sign();
+
+        Assert.True(verifier.Verify(header, "POST", Path, Body, Tenant).Succeeded);
+        Assert.Equal(HmacVerificationFailure.Replay,
+            verifier.Verify(header, "POST", Path, Body, Tenant).Failure);
+    }
+
+    [Fact]
     public void Powtorzone_zadanie_daje_Replay()
     {
         var cache = new MemoryCache(new MemoryCacheOptions());

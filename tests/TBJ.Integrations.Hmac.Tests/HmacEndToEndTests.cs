@@ -22,7 +22,7 @@ public class HmacEndToEndTests
     private const string Secret = "server-secret-0123456789abcdef0123456789";
     private const string Tenant = "S-100";
 
-    private static IHost CreateServer()
+    private static IHost CreateServer(long? cacheSizeLimit = null)
     {
         var builder = new HostBuilder()
             .ConfigureWebHost(webHost => webHost
@@ -30,6 +30,8 @@ public class HmacEndToEndTests
             .ConfigureServices(services =>
             {
                 services.AddRouting();
+                if (cacheSizeLimit is not null)
+                    services.AddMemoryCache(o => o.SizeLimit = cacheSizeLimit.Value);
                 services.AddAuthentication(Scheme)
                     .AddHmacAuthentication(Scheme, options =>
                     {
@@ -105,6 +107,19 @@ public class HmacEndToEndTests
         var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.Equal(Tenant, json.RootElement.GetProperty("sid").GetString());
         Assert.Equal(Kid, json.RootElement.GetProperty("client").GetString());
+    }
+
+    [Fact]
+    public async Task Podpisane_zadanie_przechodzi_przy_globalnym_SizeLimit_cache()
+    {
+        // Wspólny IMemoryCache hosta z SizeLimit (np. przez AddNfzUmwApi) — wpis
+        // anty-replay weryfikatora ma Size=1, więc podpisane żądanie daje 200.
+        using var server = CreateServer(cacheSizeLimit: 10);
+        using var client = CreateSignedClient(server);
+
+        var response = await client.SendAsync(SignedRequest(HttpMethod.Get, "/secure"));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]

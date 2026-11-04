@@ -104,7 +104,13 @@ public sealed class HmacRequestVerifier
         if (replayCache.TryGetValue(replayKey, out _))
             return HmacVerificationResult.Fail(HmacVerificationFailure.Replay, token.Kid, tenant);
 
-        replayCache.Set(replayKey, true, TimeSpan.FromTicks(timestampTolerance.Ticks * 2));
+        // Size=1 — zgodność ze współdzielonym IMemoryCache z ustawionym SizeLimit
+        // (bez limitu wartość jest ignorowana).
+        replayCache.Set(replayKey, true, new MemoryCacheEntryOptions
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromTicks(timestampTolerance.Ticks * 2),
+            Size = 1,
+        });
         return HmacVerificationResult.Success(token.Kid, tenant);
     }
 }
